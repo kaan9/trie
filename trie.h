@@ -41,6 +41,7 @@ void *trie_remove(struct trie *t, size_t key_len, unsigned char key[key_len]);
  * removes all keys from the trie
  * deallocates all nodes but does not free the trie struct itself
  * does not deallocate any values
+ * does not use recursion or heap-allocation
  */
 void trie_delete(struct trie *t);
 
