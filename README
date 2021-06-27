@@ -1,0 +1,12 @@
+Trie Data Structure
+----------------------------------------------------
+An implementation of the trie data structure.
+Accepts any array of bytes as a key and an optional pointer value.
+All functions are O(len(s)) where s is the string. 
+The key may be empty (of zero length).
+
+
+
+License
+----------------------------------------------------
+MIT license, copyright kaan
