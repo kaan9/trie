@@ -46,7 +46,6 @@ static struct trie_node *create_node(void *(*alloc)(size_t size))
 }
 
 
-
 static struct trie_node *get_node(struct trie *t, size_t key_len, unsigned char key[key_len])
 {
 	struct trie_node *n = t->root;
@@ -58,11 +57,7 @@ static struct trie_node *get_node(struct trie *t, size_t key_len, unsigned char 
 	return n;
 }
 
-/*
- * inserts a key-value pair to the trie, replacing an existing value
- * the key can be empty (key_len == 0)
- * return 1 on success, 0 on error and sets errno
- */
+
 int trie_insert(struct trie *t, size_t key_len, unsigned char key[key_len],
 		void *value)
 {
@@ -84,12 +79,6 @@ int trie_insert(struct trie *t, size_t key_len, unsigned char key[key_len],
 }
 
 
-/*
- * if key is in the trie, returns a non-zero int and, if pvalue is not NULL,
- * writes the corresponding value of the key to *pvalue
- * if the key is not in the trie, returns zero
- * the key may be empty (key_len == 0)
- */
 int trie_lookup(struct trie *t, size_t key_len, unsigned char key[key_len],
 		void **pvalue)
 {
@@ -103,22 +92,13 @@ int trie_lookup(struct trie *t, size_t key_len, unsigned char key[key_len],
 	return 0;
 }
 
-
-/* array of zeroes for use with memcmp */
-static unsigned char zeros[256] = {0};
-
-/* 
- * removes the key from the trie if it exists and returns its value
- * returns NULL if key is not in the trie
- * deallocates all nodes that become unnecessary
- */
-void *trie_remove(struct trie *t, size_t key_len, unsigned char key[key_len])
+int trie_prefix(struct trie *t, size_t pfx_len, unsigned char prefix[pfx_len])
 {
-	struct trie_node *n = t->root, *last_valid = NULL;
+	return get_node(t, pfx_len, prefix) != NULL;
 }
 
-
-void trie_delete(struct trie *t)
+/* frees all children of the node and the node itself */
+static void delete_children(struct trie_node *n, void (*pfree)(void *ptr))
 {
 	/* the val pointer is unused and is repurposed as a "parent" pointer;
 	 * this allows traversing and deallocating nodes without recursive
@@ -126,27 +106,49 @@ void trie_delete(struct trie *t)
 	 * additionally, the is_terminal value is used to record the next
 	 * position to check in the children array of a node
 	 */
+	struct trie_node *tmp;
 
-	struct trie_node *curr_node = t->root;
-
-	if (t->root) {
-		t->root->val = NULL;
-		t->root->is_terminal = 0;
+	if (n) {
+		n->val = NULL;
+		n->is_terminal = 0;
 	}
 	
-	while (curr_node) {
-		if (curr_node->is_terminal >= 256) {
-			curr_node = (struct trie_node *) curr_node->val;
-			(*(t->pfree))(curr_node->children[curr_node->is_terminal]);
-			curr_node->is_terminal++;
-		} else if (curr_node->children[curr_node->is_terminal] == 0) {
-			curr_node->is_terminal++;
+	while (n) {
+		if (n->is_terminal >= 256) {
+			tmp = n;
+			n = (struct trie_node *) n->val;
+			(*pfree)(tmp);
+			if (n)
+				n->is_terminal++;
+		} else if (n->children[n->is_terminal] == 0) {
+			n->is_terminal++;
 		} else {
-			curr_node->children[curr_node->is_terminal]->val = curr_node;
-			curr_node = curr_node->children[curr_node->is_terminal];
+			n->children[n->is_terminal]->val = n;
+			n = n->children[n->is_terminal];
 		}
 	}
 
+}
 
-	
+/* array of zeroes for use with memcmp */
+static unsigned char zeros[256] = {0};
+
+/* 
+ * removes the key from the trie if it exists and returns its value
+ * returns NULL if key is not in the trie
+ */
+void *trie_remove(struct trie *t, size_t key_len, unsigned char key[key_len])
+{
+	/* always preserves root node, so trie remains valid */
+	struct trie_node *n = t->root, *last_valid = t->root;
+
+	while 
+
+
+}
+
+
+void trie_delete(struct trie *t)
+{
+	delete_children(t->root);
 }
