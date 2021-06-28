@@ -26,9 +26,9 @@ static struct trie_node {
  */
 void trie_init(struct trie *t, void *(*alloc)(size_t size), void (*pfree)(void *ptr))
 {
-	t->root = NULL;
 	t->alloc = alloc ? alloc : &malloc;
 	t->pfree = pfree ? pfree : &free;
+	t->root = create_node(t->alloc);
 }
 
 static struct trie_node *create_node(void *(*alloc)(size_t size))
@@ -46,14 +46,19 @@ static struct trie_node *create_node(void *(*alloc)(size_t size))
 }
 
 
-static struct trie_node *get_node(struct trie *t, size_t key_len, unsigned char key[key_len])
+/* should've been   get_node (trie *t, ...) (trie_node *n, int depth)
+ * but C doesn't allow multiple return values
+ */
+static struct trie_node *get_node(struct trie *t, size_t key_len, unsigned char key[key_len], size_t *depth)
 {
 	struct trie_node *n = t->root;
-	size_t i = 0;
+	size_t i;
 
-	while (n && i < key_len)
+	for (i = 0; n && i < key_len; i++)
 		n = n->children[key[i] % 256];
 
+	if (depth)
+		*depth = i;
 	return n;
 }
 
@@ -66,9 +71,8 @@ int trie_insert(struct trie *t, size_t key_len, unsigned char key[key_len],
 
 	while (i < key_len) {
 		if (n->children[key[i] % 256] == NULL) {
-			if ((tmp = create_node(t->alloc)) == NULL) {
+			if ((tmp = create_node(t->alloc)) == NULL)
 				return 0;
-			}
 			n->children[key[i] % 256] = tmp;
 		}
 		n = n->children[key[i] % 256];
@@ -82,7 +86,7 @@ int trie_insert(struct trie *t, size_t key_len, unsigned char key[key_len],
 int trie_lookup(struct trie *t, size_t key_len, unsigned char key[key_len],
 		void **pvalue)
 {
-	struct trie_node *n = get_node(t, key_len, key);
+	struct trie_node *n = get_node(t, key_len, key, NULL);
 	
 	if (n && n->is_terminal) {
 		if (pvalue)
@@ -92,13 +96,21 @@ int trie_lookup(struct trie *t, size_t key_len, unsigned char key[key_len],
 	return 0;
 }
 
-int trie_prefix(struct trie *t, size_t pfx_len, unsigned char prefix[pfx_len])
+int trie_has_prefix(struct trie *t, size_t pfx_len, unsigned char prefix[pfx_len])
 {
 	return get_node(t, pfx_len, prefix) != NULL;
 }
 
-/* frees all children of the node and the node itself */
-static void delete_children(struct trie_node *n, void (*pfree)(void *ptr))
+size_t trie_longest_prefix(struct trie *t, size_t key_len,
+		unsigned char key[key_len])
+{
+	size_t len;
+
+	get_node(t, key_len, key, &len);
+	return len;
+}
+
+void trie_delete(struct trie *t)
 {
 	/* the val pointer is unused and is repurposed as a "parent" pointer;
 	 * this allows traversing and deallocating nodes without recursive
@@ -106,7 +118,7 @@ static void delete_children(struct trie_node *n, void (*pfree)(void *ptr))
 	 * additionally, the is_terminal value is used to record the next
 	 * position to check in the children array of a node
 	 */
-	struct trie_node *tmp;
+	struct trie_node *n, *tmp;
 
 	if (n) {
 		n->val = NULL;
@@ -117,7 +129,7 @@ static void delete_children(struct trie_node *n, void (*pfree)(void *ptr))
 		if (n->is_terminal >= 256) {
 			tmp = n;
 			n = (struct trie_node *) n->val;
-			(*pfree)(tmp);
+			(*t->pfree)(tmp);
 			if (n)
 				n->is_terminal++;
 		} else if (n->children[n->is_terminal] == 0) {
@@ -128,27 +140,4 @@ static void delete_children(struct trie_node *n, void (*pfree)(void *ptr))
 		}
 	}
 
-}
-
-/* array of zeroes for use with memcmp */
-static unsigned char zeros[256] = {0};
-
-/* 
- * removes the key from the trie if it exists and returns its value
- * returns NULL if key is not in the trie
- */
-void *trie_remove(struct trie *t, size_t key_len, unsigned char key[key_len])
-{
-	/* always preserves root node, so trie remains valid */
-	struct trie_node *n = t->root, *last_valid = t->root;
-
-	while 
-
-
-}
-
-
-void trie_delete(struct trie *t)
-{
-	delete_children(t->root);
 }

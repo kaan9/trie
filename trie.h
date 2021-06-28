@@ -34,18 +34,19 @@ int trie_lookup(struct trie *t, size_t key_len, unsigned char key[key_len],
  * if prefix is the prefix of some key in the trie, returns a non-zero int
  * otherwise returns 0
  */
-int trie_prefix(struct trie *t, size_t pfx_len, unsigned char prefix[pfx_len]);
+int trie_has_prefix(struct trie *t, size_t pfx_len, unsigned char prefix[pfx_len]);
 
-/* 
- * removes the key from the trie if it exists and returns its value
- * returns NULL if key is not in the trie
+/*
+ * returns the number of bytes in the longest prefix of the key that is in
+ * the trie, including the key itself
+ * that is, if the key is in the trie, returns key_len
  */
-void *trie_remove(struct trie *t, size_t key_len, unsigned char key[key_len]);
+size_t trie_longest_prefix(struct trie *t, size_t key_len, unsigned char key[key_len]);
 
 /*
  * deinitializes and deallocates the trie, removing all keys from the trie
  * does not free the trie struct itself
- * does not deallocate any values of (key,val) pairs
+ * does not deallocate any vals of the (key,val) pairs
  * does not use recursion or heap-allocation
  * a call to trie_init is necessary to reuse the trie after trie_delete
  */
