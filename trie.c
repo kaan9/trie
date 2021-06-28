@@ -1,10 +1,16 @@
 /* trie.c -- implementation of trie data structure */
 
+#include <errno.h>
 #include <stdlib.h>
 #include <string.h>
 
 
-static struct trie_node;
+struct trie_node {
+	struct trie_node *children[256]; /* all bytes are valid keys */
+	void *val; /* optional pointer to value if this node is a terminal */
+	int is_terminal; /* non-zero if node is a terminal value */
+};
+
 
 struct trie {
 	struct trie_node *root;
@@ -12,12 +18,20 @@ struct trie {
 	void (*pfree)(void *ptr);
 };
 
-static struct trie_node {
-	struct trie_node children[256]; /* all bytes are valid keys */
-	void *val; /* optional pointer to value if this node is a terminal */
-	int is_terminal; /* non-zero if node is a terminal value */
-}
 
+static struct trie_node *create_node(void *(*alloc)(size_t size))
+{
+	struct trie_node *n = alloc(sizeof(*n));
+	
+	if (!n) {
+		errno = ENOMEM;
+		return NULL;
+	}
+
+	memset(&(n->children), 0, sizeof(n->children));
+	n->is_terminal = 0;
+	return n;
+}
 
 /*
  * initializes the trie with an optional allocator and deallocator function
@@ -31,25 +45,12 @@ void trie_init(struct trie *t, void *(*alloc)(size_t size), void (*pfree)(void *
 	t->root = create_node(t->alloc);
 }
 
-static struct trie_node *create_node(void *(*alloc)(size_t size))
-{
-	struct trie_node *n = alloc(sizeof(*n));
-	
-	if (*n) {
-		errno = ENOMEM;
-		return NULL;
-	}
-
-	memset(&(n->children), 0, 256);
-	n->is_terminal = 0;
-	return n;
-}
 
 
 /* should've been   get_node (trie *t, ...) (trie_node *n, int depth)
  * but C doesn't allow multiple return values
  */
-static struct trie_node *get_node(struct trie *t, size_t key_len, unsigned char key[key_len], size_t *depth)
+static struct trie_node *get_node(struct trie *t, size_t key_len, unsigned char *key, size_t *depth)
 {
 	struct trie_node *n = t->root;
 	size_t i;
@@ -63,7 +64,7 @@ static struct trie_node *get_node(struct trie *t, size_t key_len, unsigned char 
 }
 
 
-int trie_insert(struct trie *t, size_t key_len, unsigned char key[key_len],
+int trie_insert(struct trie *t, size_t key_len, unsigned char *key,
 		void *value)
 {
 	struct trie_node *n = t->root, *tmp;
@@ -83,7 +84,7 @@ int trie_insert(struct trie *t, size_t key_len, unsigned char key[key_len],
 }
 
 
-int trie_lookup(struct trie *t, size_t key_len, unsigned char key[key_len],
+int trie_lookup(struct trie *t, size_t key_len, unsigned char *key,
 		void **pvalue)
 {
 	struct trie_node *n = get_node(t, key_len, key, NULL);
@@ -96,13 +97,12 @@ int trie_lookup(struct trie *t, size_t key_len, unsigned char key[key_len],
 	return 0;
 }
 
-int trie_has_prefix(struct trie *t, size_t pfx_len, unsigned char prefix[pfx_len])
+int trie_has_prefix(struct trie *t, size_t pfx_len, unsigned char *prefix)
 {
-	return get_node(t, pfx_len, prefix) != NULL;
+	return get_node(t, pfx_len, prefix, NULL) != NULL;
 }
 
-size_t trie_longest_prefix(struct trie *t, size_t key_len,
-		unsigned char key[key_len])
+size_t trie_longest_prefix(struct trie *t, size_t key_len, unsigned char *key)
 {
 	size_t len;
 
@@ -118,7 +118,7 @@ void trie_delete(struct trie *t)
 	 * additionally, the is_terminal value is used to record the next
 	 * position to check in the children array of a node
 	 */
-	struct trie_node *n, *tmp;
+	struct trie_node *n = t->root, *tmp;
 
 	if (n) {
 		n->val = NULL;
