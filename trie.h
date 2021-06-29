@@ -4,7 +4,14 @@
 
 #include <stddef.h>
 
-struct trie;
+struct trie_node;
+
+struct trie {
+	struct trie_node *root;
+	void *(*alloc)(size_t size);
+	void (*pfree)(void *ptr);
+};
+
 
 /*
  * initializes the trie with an optional allocator and deallocator function
@@ -18,8 +25,7 @@ void trie_init(struct trie *t, void *(*alloc)(size_t size), void (*pfree)(void *
  * the key can be empty (key_len == 0)
  * return 1 on success, 0 on error and sets errno
  */
-int trie_insert(struct trie *t, size_t key_len, unsigned char key[key_len],
-		void *value);
+int trie_insert(struct trie *t, size_t key_len, unsigned char *key, void *value);
 
 /*
  * if key is in the trie, returns a non-zero int and, if pvalue is not NULL,
@@ -27,21 +33,21 @@ int trie_insert(struct trie *t, size_t key_len, unsigned char key[key_len],
  * if the key is not in the trie, returns zero
  * the key may be empty (key_len == 0)
  */
-int trie_lookup(struct trie *t, size_t key_len, unsigned char key[key_len],
-		void **pvalue);
+int trie_lookup(struct trie *t, size_t key_len, unsigned char *key, void **pvalue);
 
 /*
  * if prefix is the prefix of some key in the trie, returns a non-zero int
  * otherwise returns 0
+ * a key is also its own prefix
  */
-int trie_has_prefix(struct trie *t, size_t pfx_len, unsigned char prefix[pfx_len]);
+int trie_has_prefix(struct trie *t, size_t pfx_len, unsigned char *prefix);
 
 /*
  * returns the number of bytes in the longest prefix of the key that is in
  * the trie, including the key itself
  * that is, if the key is in the trie, returns key_len
  */
-size_t trie_longest_prefix(struct trie *t, size_t key_len, unsigned char key[key_len]);
+size_t trie_longest_prefix(struct trie *t, size_t key_len, unsigned char *key);
 
 /*
  * deinitializes and deallocates the trie, removing all keys from the trie

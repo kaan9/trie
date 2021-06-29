@@ -4,18 +4,12 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "trie.h"
 
 struct trie_node {
 	struct trie_node *children[256]; /* all bytes are valid keys */
 	void *val; /* optional pointer to value if this node is a terminal */
 	int is_terminal; /* non-zero if node is a terminal value */
-};
-
-
-struct trie {
-	struct trie_node *root;
-	void *(*alloc)(size_t size);
-	void (*pfree)(void *ptr);
 };
 
 
@@ -33,11 +27,7 @@ static struct trie_node *create_node(void *(*alloc)(size_t size))
 	return n;
 }
 
-/*
- * initializes the trie with an optional allocator and deallocator function
- * defaults to malloc if alloc is NULL
- * defaults to free if pfree is NULL
- */
+
 void trie_init(struct trie *t, void *(*alloc)(size_t size), void (*pfree)(void *ptr))
 {
 	t->alloc = alloc ? alloc : &malloc;
@@ -55,8 +45,9 @@ static struct trie_node *get_node(struct trie *t, size_t key_len, unsigned char 
 	struct trie_node *n = t->root;
 	size_t i;
 
-	for (i = 0; n && i < key_len; i++)
+	for (i = 0; n && i < key_len; i++) {
 		n = n->children[key[i] % 256];
+	}
 
 	if (depth)
 		*depth = i;
@@ -70,7 +61,7 @@ int trie_insert(struct trie *t, size_t key_len, unsigned char *key,
 	struct trie_node *n = t->root, *tmp;
 	size_t i = 0;
 
-	while (i < key_len) {
+	for (; i < key_len; i++) {
 		if (n->children[key[i] % 256] == NULL) {
 			if ((tmp = create_node(t->alloc)) == NULL)
 				return 0;
@@ -105,9 +96,12 @@ int trie_has_prefix(struct trie *t, size_t pfx_len, unsigned char *prefix)
 size_t trie_longest_prefix(struct trie *t, size_t key_len, unsigned char *key)
 {
 	size_t len;
+	struct trie_node *n;
 
 	get_node(t, key_len, key, &len);
-	return len;
+	printf("%s: len = %d\n", key, len);
+	/*FIXME: not working properly */
+	return trie_lookup(t, len, key, NULL) ? len : 0;
 }
 
 void trie_delete(struct trie *t)
