@@ -5,7 +5,8 @@ Accepts any array of bytes as a key and an optional pointer value.
 All functions are O(len(s)) where s is the string. 
 The key may be empty (of zero length).
 
-
+Work in progress: all functions except longest_prefix are fully implemented,
+valgrind reports no memory errors.
 
 License
 ----------------------------------------------------
